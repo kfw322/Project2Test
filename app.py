@@ -11,6 +11,9 @@ from sqlalchemy.ext.automap import automap_base
 import matplotlib.pyplot as plt
 from flask import Flask, jsonify, render_template, request, redirect
 import json
+from datetime import datetime
+from dateutil.parser import parse
+import win32api
 
 engine = create_engine("sqlite:///data.sqlite")
 conn = engine.connect()
@@ -36,7 +39,7 @@ class FPSR(Base):
 class PCE(Base):
     __tablename__ = "PCE"
     __table_args__ = {"extend_existing":True}
-    GeoName = Column(Text,primary_key=True)
+    GeoFIPS = Column(Integer,primary_key=True)
     Line = Column(Text,primary_key=True)
 
 Base.prepare()
@@ -49,40 +52,37 @@ def home():
 
 @app.route("/statelist")
 def statelist():
-    raw_df = pd.read_csv("PCE_ALL_AREAS (1).csv")
-    raw_df["GeoFIPS"] = pd.to_numeric(raw_df["GeoFIPS"],errors="coerce")
-    df=raw_df.loc[raw_df["GeoFIPS"].between(1,60000, inclusive=False)] #leaving out all the region data and national data... states only
-    statelist = sorted(df["GeoName"].value_counts().reset_index()["index"].tolist())
-    return(statelist)
+    listofstates=[]
+    for row in session.query(PCE):
+        if int(row.GeoFIPS) < 60000: 
+            listofstates.append(row.GeoName)
+    statelist = []
+    statelist = sorted(list(set(listofstates)))    
+    return(jsonify(statelist))
+
+@app.route("/savings")
+def savings():
+    savings_data_dict = {}
+    for row in session.query(FPSR):
+        savings_data_dict[str(parse(row.DATE).strftime("%Y-%m-%d"))] = row.USPersonalSavingsRate
+    return(jsonify(savings_data_dict))
 
 @app.route("/pce/<state>")
 def pce(state):
-    pce_data_dict = {}
-    #code to read in pce by state info
-    return(jsonify(pce_data_dict))
-
-@app.route("/savings/<state>")
-def savings(state):
-    #code to read in pce by state info
-    raw_df = pd.read_csv("PCE_ALL_AREAS (1).csv")
-    raw_df["GeoFIPS"] = pd.to_numeric(raw_df["GeoFIPS"],errors="coerce")
-    df=raw_df.loc[raw_df["GeoFIPS"].between(1,60000, inclusive=False)] #leaving out all the region data and national data... states only
-    statelist = sorted(df["GeoName"].value_counts().reset_index()["index"].tolist())
-    df_dict = {} #dict of dataframes
-    datadict = {} #dict json
-    for state in statelist:
-        df_dict[state] = df.loc[df["GeoName"]==state].reset_index(drop=True)
-        datadict[state]={} 
-        for year in range(1997,2017,1):
-            y=str(year)
-            datadict[state][y]={}
-            datadict[state][y]["Total PCE"] = df_dict[state].at[0,f"{year}"]
-            datadict[state][y]["Goods"] = df_dict[state].at[1,f"{year}"]
-            datadict[state][y]["Services"] = df_dict[state].at[12,f"{year}"]
-    savings_data_dict = datadict
-    with open('pcebystatebyyear.json', 'w') as outfile:
-        json.dump(datadict, outfile, sort_keys = True, indent = 4, ensure_ascii = False)
-    return(jsonify(savings_data_dict))
+    datadict = {}
+    for year in range (1997,2017,1):
+        y=str(year)
+        datadict[y] = {}
+        sqlquery = str(r' select "' + y + r'" from PCE WHERE GeoName= "' + state + r'" AND Line = "1"')
+        for row in conn.engine.execute(sqlquery):
+            datadict[y]["Total PCE"] = str(row[0])
+        sqlquery = str(r' select "' + y + r'" from PCE WHERE GeoName= "' + state + r'" AND Line = "2"')
+        for row in conn.engine.execute(sqlquery):
+            datadict[y]["Goods"] = str(row[0])
+        sqlquery = str(r' select "' + y + r'" from PCE WHERE GeoName= "' + state + r'" AND Line = "13"')
+        for row in conn.engine.execute(sqlquery):
+            datadict[y]["Services"] = str(row[0])
+    return(jsonify(datadict))
 
 if __name__ == "__main__":
     app.run(debug=True)

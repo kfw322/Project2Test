@@ -18,6 +18,15 @@
         var layout = { margin: { t: 30, b:100 } }
         Plotly.plot("bar", data, layout)
     })
+
+        Plotly.d3.json("/pce/<state>", function(error, response) {
+        console.log("response")
+        if (error) return console.warn(error);
+        var data = [response];
+        console.log(data);
+        var layout = { margin: { t: 30, b:100 } }
+        Plotly.plot("bar", data, layout)
+    })
     </script>
 </body>
 </html>
