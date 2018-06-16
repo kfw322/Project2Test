@@ -6,7 +6,7 @@
         <!-- Plotly chart will be drawn inside this DIV -->
             <div id="myDiv"></div>
             <script>
-                
+                var myPlot = document.getElementById("myDiv");
 Plotly.d3.csv('https://raw.githubusercontent.com/plotly/datasets/master/2011_us_ag_exports.csv', function(err, rows){
       function unpack(rows, key) {
           return rows.map(function(row) { return row[key]; });
@@ -46,7 +46,12 @@ console.log(data.locations);
             lakecolor: 'rgb(255,255,255)'
           }
       };
-      Plotly.plot(myDiv, data, layout, {showLink: false});
+      Plotly.newPlot(myDiv, data, layout, {showLink: false});
+      myPlot.on("plotly_click",function(){
+        alert("Hi!");
+      })
+      
+
   });
 
 
