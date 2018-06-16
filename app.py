@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 import os
 import sqlalchemy
-import pymysql
 from sqlalchemy import create_engine, MetaData, inspect
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, String, Numeric, Text, Float
@@ -13,21 +12,32 @@ import matplotlib.pyplot as plt
 from flask import Flask, jsonify, render_template, request, redirect
 import json
 
-pymysql.install_as_MySQLdb()
-engine = create_engine("mysql://root:root@localhost:3306/Dump20180614")
-#engine.execute("USE Dump20180614")
+engine = create_engine("sqlite:///data.sqlite")
 conn = engine.connect()
 Base= automap_base()
 Base.prepare(engine,reflect=True)
 Base.classes.keys()
 inspector=inspect(engine)
 inspector.get_table_names()
-inspector.get_columns("disposable_personal_income")
+inspector.get_columns("DPI")
+inspector.get_columns("FPSR")
+inspector.get_columns("PCE")
 
-class datatable1(Base):
-    __tablename__ = "table_uno"
+class DPI(Base):
+    __tablename__ = "DPI"
     __table_args__ = {"extend_existing":True}
-    nameofprimarykey = Column(Text,primary_key=True)
+    field1 = Column(Text,primary_key=True)
+
+class FPSR(Base):
+    __tablename__ = "FPSR"
+    __table_args__ = {"extend_existing":True}
+    DATE = Column(Text,primary_key=True)
+
+class PCE(Base):
+    __tablename__ = "PCE"
+    __table_args__ = {"extend_existing":True}
+    GeoName = Column(Text,primary_key=True)
+    Line = Column(Text,primary_key=True)
 
 Base.prepare()
 session=Session(engine)
@@ -52,7 +62,7 @@ def pce(state):
     return(jsonify(pce_data_dict))
 
 @app.route("/savings/<state>")
-def pce(state):
+def savings(state):
     #code to read in pce by state info
     raw_df = pd.read_csv("PCE_ALL_AREAS (1).csv")
     raw_df["GeoFIPS"] = pd.to_numeric(raw_df["GeoFIPS"],errors="coerce")
