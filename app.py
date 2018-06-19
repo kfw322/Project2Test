@@ -25,6 +25,7 @@ inspector.get_table_names()
 inspector.get_columns("DPI")
 inspector.get_columns("FPSR")
 inspector.get_columns("PCE")
+inspector.get_columns("acs2015_county_data")
 
 class DPI(Base):
     __tablename__ = "DPI"
@@ -41,6 +42,11 @@ class PCE(Base):
     __table_args__ = {"extend_existing":True}
     GeoFIPS = Column(Integer,primary_key=True)
     Line = Column(Text,primary_key=True)
+
+class DEMO(Base):
+    __tablename__ = "acs2015_county_data"
+    __table_args__ = {"extend_existing":True}
+    CensusId = Column(Integer,primary_key=True)
 
 Base.prepare()
 session=Session(engine)
@@ -83,6 +89,19 @@ def pce(state):
         for row in conn.engine.execute(sqlquery):
             datadict[y]["Services"] = str(row[0])
     return(jsonify(datadict))
+
+@app.route("/countydata")
+def county():
+    slist = {}
+    
+    for rs in conn.engine.execute(r'select distinct "State" from acs2015_county_data'):
+        s=str(rs[0])
+        slist[s] = {}
+        for rc in conn.engine.execute(r'select distinct "County" from acs2015_county_data where State="' + s + r'"'):
+            c=str(rc[0])
+            slist[s][c] = pd.read_sql_query(r'select * from acs2015_county_data where State="' + s + r'" and County="' + c + r'"',engine).T.to_dict()
+    
+    return(jsonify(slist))
 
 if __name__ == "__main__":
     app.run(debug=True)
