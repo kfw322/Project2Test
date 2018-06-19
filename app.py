@@ -103,5 +103,25 @@ def county():
     
     return(jsonify(slist))
 
+@app.route("/income/<state>/<year>")
+def incy(state,year):
+    for row in conn.engine.execute(r'select DataValue from DPI where GeoName like "' + state + r'%" and TimePeriod="' + year + r'"'):
+        inc = str(row[0])
+    return(inc)
+
+@app.route("/income/<state>/all")
+def inc(state):
+    incdict = {}    
+    for row in conn.engine.execute(r'select TimePeriod, DataValue from DPI where GeoName like "' + state + r'%"'):
+        incdict[row.TimePeriod] = row.DataValue
+    return(jsonify(incdict))
+        
+
+
+
+
+
+
+
 if __name__ == "__main__":
     app.run(debug=True)
