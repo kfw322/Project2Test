@@ -90,6 +90,17 @@ def pce(state):
             datadict[y]["Services"] = str(row[0])
     return(jsonify(datadict))
 
+@app.route("/pcedetail/<state>")
+def pced(state):
+    pcedetail = {}
+    for year in range (1997,2017,1):
+        y=str(year)
+        pcedetail[y] = {}
+        sqlquery = str(r' select "Line", "Description", "' + y + r'" from PCE WHERE GeoName= "' + state + r'"')
+        for row in conn.engine.execute(sqlquery):
+            pcedetail[y][str(row.Description + " (" + row.Line + ")")] = row[2]
+    return(jsonify(pcedetail))
+    
 @app.route("/countydata")
 def county():
     slist = {}
