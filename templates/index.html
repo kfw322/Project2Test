@@ -5,14 +5,152 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Project</title>
+    <style type="text/css">
+        .my-chart-container {
+          max-width: 100%;
+          max-height: 100%;
+        }
+      </style>
+<!--     
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <svg width="960" height="500"></svg>
-    <script src="//d3js.org/d3.v4.min.js"></script>
+     <script src="//d3js.org/d3.v4.min.js"></script> -->
 </head>
 <body>
-    <div id="bar"></div>
-    <script>
+        
+            <h3>Case.3 stacked vertical bar</h1>
+            <div class="my-chart-container">
+              <canvas id="my-chart-3" width="600" height="300"></canvas>
+            </div>
 
+
+    <script type="text/javascript" src="https://npmcdn.com/chart.js@latest/dist/Chart.bundle.min.js"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='barsetup.js') }}"></script>
+    <script type="text/javascript">
+
+const chart = new Chart(document.getElementById("my-chart-3"), {
+  type: "bar",
+  data: {
+    labels: ["a", "b", "c", "d"],
+    datasets: [
+      { label: "L1", data: [10, 9, 43, 25], backgroundColor: "rgba(244, 143, 177, 0.6)" },
+      { label: "L2", data: [20, 6, 6, 18], backgroundColor: "rgba(255, 235, 59, 0.6)" },
+      { label: "L3", data: [30, 3, 41, 25], backgroundColor: "rgba(100, 181, 246, 0.6)" }
+    ]
+  },
+  options: {
+    plugins: {
+      stacked100: { enable: true }
+    }
+  }
+});
+
+(function(Chart) {
+    var cloneArray = function(srcAry) {
+      var dstAry = [];
+      var length = srcAry.length;
+  
+      for (var i = 0; i < length; i++) {
+        dstAry.push(srcAry[i]);
+      }
+      return dstAry;
+    };
+  
+    var setOriginalData = function(data) {
+      data.originalData = data.datasets.map(function(dataset) {
+        return cloneArray(dataset.data);
+      });
+    };
+  
+    // set calculated rate (xx%) to data.calculatedData
+    var calculateRate = function(data) {
+      var visibles = data.datasets.map(function(dataset) {
+        if (!dataset._meta) return true;
+  
+        for (var i in dataset._meta) {
+          return !dataset._meta[i].hidden;
+        }
+      });
+  
+      var totals = Array.apply(null, new Array(data.datasets[0].data.length)).map(function(el, i) {
+        return data.datasets.reduce(function(sum, dataset, j) {
+          var key = dataset.stack;
+          if (!sum[key]) sum[key] = 0;
+          sum[key] += dataset.data[i] * visibles[j];
+  
+          return sum;
+        }, {});
+      });
+  
+      data.calculatedData = data.datasets.map(function(dataset, i) {
+        return dataset.data.map(function(val, i) {
+          var total = totals[i][dataset.stack];
+          return val && total ? Math.round(val * 1000 / total) / 10 : 0;
+        });
+      });
+    };
+  
+    var tooltipLabel = function(tooltipItem, data) {
+      var datasetIndex = tooltipItem.datasetIndex;
+      var index = tooltipItem.index;
+      var datasetLabel = data.datasets[datasetIndex].label || "";
+      var originalValue = data.originalData[datasetIndex][index];
+      var rateValue = data.calculatedData[datasetIndex][index];
+  
+      return "" + datasetLabel + ": " + rateValue + "% (" + originalValue + ")";
+    };
+  
+    var reflectData = function(srcData, datasets) {
+      if (!srcData) return;
+  
+      srcData.forEach(function(data, i) {
+        datasets[i].data = data;
+      });
+    };
+  
+    var Stacked100Plugin = {
+      id: "stacked100",
+  
+      beforeInit: function(chartInstance, pluginOptions) {
+        if (!pluginOptions.enable) return;
+  
+        var xAxes = chartInstance.options.scales.xAxes;
+        var yAxes = chartInstance.options.scales.yAxes;
+        var isVertical = chartInstance.config.type === "bar" || chartInstance.config.type === "line";
+  
+        [xAxes, yAxes].forEach(function(axes) {
+          axes.forEach(function(hash) {
+            hash.stacked = true;
+          });
+        });
+        (isVertical ? yAxes : xAxes).forEach(function(hash) {
+          hash.ticks.min = 0;
+          hash.ticks.max = 100;
+        });
+  
+        // Replace tooltips
+        if (pluginOptions.hasOwnProperty("replaceTooltipLabel") && !pluginOptions.replaceTooltipLabel) return;
+        chartInstance.options.tooltips.callbacks.label = tooltipLabel;
+      },
+  
+      beforeDatasetsUpdate: function(chartInstance, pluginOptions) {
+        if (!pluginOptions.enable) return;
+  
+        setOriginalData(chartInstance.data);
+        calculateRate(chartInstance.data);
+        reflectData(chartInstance.data.calculatedData, chartInstance.data.datasets);
+      },
+  
+      afterDatasetsUpdate: function(chartInstance, pluginOptions) {
+        if (!pluginOptions.enable) return;
+  
+        reflectData(chartInstance.data.originalData, chartInstance.data.datasets);
+      }
+    };
+  
+    Chart.pluginService.register(Stacked100Plugin);
+  }.call(this, Chart));
+  
 
     //     Plotly.d3.json("/pcedetail/<state>", function(error, response) {
     //     console.log("response")
@@ -25,86 +163,79 @@
 
 
 
-    var svg = d3.select("svg"),
-    margin = {top: 20, right: 60, bottom: 30, left: 40},
-    width = +svg.attr("width") - margin.left - margin.right,
-    height = +svg.attr("height") - margin.top - margin.bottom,
-    g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+//     var svg = d3.select("svg"),
+//     margin = {top: 20, right: 60, bottom: 30, left: 40},
+//     width = +svg.attr("width") - margin.left - margin.right,
+//     height = +svg.attr("height") - margin.top - margin.bottom,
+//     g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-var x = d3.scaleBand()
-    .rangeRound([0, width])
-    .padding(0.1)
-    .align(0.1);
+// var x = d3.scaleBand()
+//     .rangeRound([0, width])
+//     .padding(0.1)
+//     .align(0.1);
 
-var y = d3.scaleLinear()
-    .rangeRound([height, 0]);
+// var y = d3.scaleLinear()
+//     .rangeRound([height, 0]);
 
-var z = d3.scaleOrdinal()
-    .range(["#98abc5", "#8a89a6", "#7b6888", "#6b486b", "#a05d56", "#d0743c", "#ff8c00"]);
+// var z = d3.scaleOrdinal()
+//     .range(["#98abc5", "#8a89a6", "#7b6888", "#6b486b", "#a05d56", "#d0743c", "#ff8c00"]);
 
-var stack = d3.stack()
-    .offset(d3.stackOffsetExpand);
+// var stack = d3.stack()
+//     .offset(d3.stackOffsetExpand);
 
-Plotly.d3.json("/pcedetail/<state>", function(error, data) {
-  if (error) throw error;
+// Plotly.d3.json("/pcedetail/<state>", function(error, data) {
+//   if (error) throw error;
 
-  data.sort(function(a, b) { return b[data.columns[1]] / b.total - a[data.columns[1]] / a.total; });
+//   data.sort(function(a, b) { return b[data.columns[1]] / b.total - a[data.columns[1]] / a.total; });
 
-  x.domain(data.map(function(d) { return d.State; }));
-  z.domain(data.columns.slice(1));
+//   x.domain(data.map(function(d) { return d.State; }));
+//   z.domain(data.columns.slice(1));
 
-  var serie = g.selectAll(".serie")
-    .data(stack.keys(data.columns.slice(1))(data))
-    .enter().append("g")
-      .attr("class", "serie")
-      .attr("fill", function(d) { return z(d.key); });
+//   var serie = g.selectAll(".serie")
+//     .data(stack.keys(data.columns.slice(1))(data))
+//     .enter().append("g")
+//       .attr("class", "serie")
+//       .attr("fill", function(d) { return z(d.key); });
 
-  serie.selectAll("rect")
-    .data(function(d) { return d; })
-    .enter().append("rect")
-      .attr("x", function(d) { return x(d.data.State); })
-      .attr("y", function(d) { return y(d[1]); })
-      .attr("height", function(d) { return y(d[0]) - y(d[1]); })
-      .attr("width", x.bandwidth());
+//   serie.selectAll("rect")
+//     .data(function(d) { return d; })
+//     .enter().append("rect")
+//       .attr("x", function(d) { return x(d.data.State); })
+//       .attr("y", function(d) { return y(d[1]); })
+//       .attr("height", function(d) { return y(d[0]) - y(d[1]); })
+//       .attr("width", x.bandwidth());
 
-  g.append("g")
-      .attr("class", "axis axis--x")
-      .attr("transform", "translate(0," + height + ")")
-      .call(d3.axisBottom(x));
+//   g.append("g")
+//       .attr("class", "axis axis--x")
+//       .attr("transform", "translate(0," + height + ")")
+//       .call(d3.axisBottom(x));
 
-  g.append("g")
-      .attr("class", "axis axis--y")
-      .call(d3.axisLeft(y).ticks(10, "%"));
+//   g.append("g")
+//       .attr("class", "axis axis--y")
+//       .call(d3.axisLeft(y).ticks(10, "%"));
 
-  var legend = serie.append("g")
-      .attr("class", "legend")
-      .attr("transform", function(d) { var d = d[d.length - 1]; return "translate(" + (x(d.data.State) + x.bandwidth()) + "," + ((y(d[0]) + y(d[1])) / 2) + ")"; });
+//   var legend = serie.append("g")
+//       .attr("class", "legend")
+//       .attr("transform", function(d) { var d = d[d.length - 1]; return "translate(" + (x(d.data.State) + x.bandwidth()) + "," + ((y(d[0]) + y(d[1])) / 2) + ")"; });
 
-  legend.append("line")
-      .attr("x1", -6)
-      .attr("x2", 6)
-      .attr("stroke", "#000");
+//   legend.append("line")
+//       .attr("x1", -6)
+//       .attr("x2", 6)
+//       .attr("stroke", "#000");
 
-  legend.append("text")
-      .attr("x", 9)
-      .attr("dy", "0.35em")
-      .attr("fill", "#000")
-      .style("font", "10px sans-serif")
-      .text(function(d) { return d.key; });
-});
+//   legend.append("text")
+//       .attr("x", 9)
+//       .attr("dy", "0.35em")
+//       .attr("fill", "#000")
+//       .style("font", "10px sans-serif")
+//       .text(function(d) { return d.key; });
+// });
 
-function type(d, i, columns) {
-  for (i = 1, t = 0; i < columns.length; ++i) t += d[columns[i]] = +d[columns[i]];
-  d.total = t;
-  return d;
-}
-
-
-
-
-
-
-
+// function type(d, i, columns) {
+//   for (i = 1, t = 0; i < columns.length; ++i) t += d[columns[i]] = +d[columns[i]];
+//   d.total = t;
+//   return d;
+// }
 
 
 

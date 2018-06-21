@@ -100,6 +100,43 @@ def pced(state):
         for row in conn.engine.execute(sqlquery):
             pcedetail[y][str(row.Description + " (" + row.Line + ")")] = row[2]
     return(jsonify(pcedetail))
+
+@app.route("/pcegraph/<state>")
+def pceg(state):
+    label = []
+    alldata = []
+    years = []
+    backgroundColor = ["rgba(114,147,203, 0.8)","rgba(225,151,76, 0.8)","rgba(132,186,91, 0.8)","rgba(211,94,96, 0.8)",
+    "rgba(128,133,133, 0.8)","rgba(144,103,167, 0.8)","rgba(171,104,87, 0.8)","rgba(204,194,16, 0.8)",
+    "rgba(114,147,203, 0.8)","rgba(225,151,76, 0.8)","rgba(132,186,91, 0.8)","rgba(211,94,96, 0.8)",
+    "rgba(128,133,133, 0.8)","rgba(144,103,167, 0.8)","rgba(171,104,87, 0.8)","rgba(204,194,16, 0.8)"]
+    years.extend(range(1997,2017))
+    labels = [str(x) for x in years]
+    for line in [4,5,6,7,9,10,11,12,15,16,17,18,19,20,21,22]:
+        partdata = []
+        for row in conn.engine.execute(str(r'select "Description" from PCE WHERE GeoName= "' + state + r'" AND Line = "' + str(line) + r'"')):
+            label.append(str(row[0]))
+        for year in range (1997,2017,1):
+
+            sqlquery = str(r'select "' + str(year) + r'" from PCE WHERE GeoName= "' + state + r'" AND Line = "' + str(line) + r'"')
+            for row in conn.engine.execute(sqlquery):
+                partdata.append(int(row[0]))
+        alldata.append(partdata)
+
+    datadct = {}
+    datadct["labels"] = labels
+    datadct["datasets"] = []
+    
+    for x in range(len(alldata)):
+        
+        datadct["datasets"].append({"label":str(label[x]),"data":alldata[x],"backgroundColor":backgroundColor[x],"hoverBorderColor":"gray","hoverBorderWidth":4})
+    
+    #return(jsonify(datadct))
+    return render_template("graph.html",datadct=datadct)
+
+
+
+
     
 @app.route("/countydata")
 def county():
